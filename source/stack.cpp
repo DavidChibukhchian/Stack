@@ -227,8 +227,8 @@ static void make_struct_non_valid(Stack* stk)
     stk->first_elem = nullptr;
     stk->top_elem   = nullptr;
 
-    stk-> left_struct_canary  = LONG_LONG_MAX;
-    stk->right_struct_canary  = LONG_LONG_MAX;
+    stk-> left_struct_canary = LONG_LONG_MAX;
+    stk->right_struct_canary = LONG_LONG_MAX;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
