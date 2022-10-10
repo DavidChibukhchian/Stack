@@ -324,7 +324,7 @@ int stackCtor(Stack* stk, size_t init_capacity)
    stk->err      = 0;
    stk->capacity = init_capacity;
 
-   stk->first_elem = (elem_t*)(stk->left_buff_canary + 1);
+   stk->first_elem = (elem_t*)(stk->left_buff_canary);
    stk->top_elem   = stk->first_elem;
 
    put_poison_to_buffer(stk);
@@ -401,7 +401,7 @@ int stackPush(Stack* stk, elem_t value)
         (stk->top_elem)++;
     }
     *(stk->top_elem) = value;
-    stk->size++;
+    
 
     recalculate_buffer_hash(stk);
     recalculate_struct_hash(stk);
