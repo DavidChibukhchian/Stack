@@ -1,6 +1,8 @@
 #ifndef TASK3_STACK_H
 #define TASK3_STACK_H
 
+#include <stdio.h>
+
 typedef double elem_t;
 typedef long long int canary_t;
 
@@ -37,7 +39,7 @@ int stackPush (Stack* stk, elem_t value);
 
 int stackPop  (Stack* stk);
 
-int stackTop  (Stack* stk, elem_t* value);
+int stackTop  (Stack* stk, elem_t* top);
 
 int stackDtor (Stack* stk);
 
