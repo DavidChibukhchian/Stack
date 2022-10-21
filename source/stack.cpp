@@ -516,7 +516,7 @@ int stackPop(Stack* stk)
 
 //----------------------------------------------------------------------------------------------------------------------
 
-int stackTop(Stack* stk, elem_t* value)
+int stackTop(Stack* stk, elem_t* top)
 {
     if (stack_pointer_is_null(stk))
         return Stack_Pointer_Is_Null;
@@ -529,7 +529,7 @@ int stackTop(Stack* stk, elem_t* value)
 
     if (stk->size != 0)
     {
-        *value = *stk->top_elem;
+        *top = *stk->top_elem;
     }
     else
     {
