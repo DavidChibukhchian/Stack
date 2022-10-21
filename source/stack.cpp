@@ -2,10 +2,14 @@
 #include <malloc.h>
 #include "Stack.h"
 
-static const canary_t        CANARY = 0xABCDE12345;
-static const elem_t          POISON = 0x111ABCBA111;
-static const int         MULTIPLIER = 2;
-static const size_t BUFFER_SIZE_MAX = 1e7;
+//----------------------------------------------------------------------------------------------------------------------
+
+static const canary_t CANARY = 0xABCDE12345;
+static const elem_t   POISON = 0x111ABCBA111;
+static const int      MULTIPLIER = 2;
+static const size_t   BUFFER_SIZE_MAX = 1e7;
+
+//----------------------------------------------------------------------------------------------------------------------
 
 static const size_t SIZE_OF_STRUCT =  1 * sizeof(stack_status)
                                     + 2 * sizeof(size_t)
@@ -13,10 +17,14 @@ static const size_t SIZE_OF_STRUCT =  1 * sizeof(stack_status)
                                     + 2 * sizeof(canary_t)
                                     + 1 * sizeof(FILE*);
 
+//----------------------------------------------------------------------------------------------------------------------
+
 #define SIZE_OF_BUFF          (2 * sizeof(canary_t) + stk->capacity * sizeof(elem_t))
 #define SIZE_OF_INIT_BUFF     (2 * sizeof(canary_t) + init_capacity * sizeof(elem_t))
 #define SIZE_OF_EXPANDED_BUFF (sizeof(elem_t) * ((stk->capacity) * MULTIPLIER) + 2 * sizeof(canary_t))
 #define SIZE_OF_SHRANK_BUFF   (sizeof(elem_t) * ((stk->capacity) / MULTIPLIER) + 2 * sizeof(canary_t))
+
+//----------------------------------------------------------------------------------------------------------------------
 
 enum Resize_mode
 {
@@ -24,13 +32,26 @@ enum Resize_mode
     SHRINK
 };
 
+//----------------------------------------------------------------------------------------------------------------------
+
 enum Errors
 {
-    Stack_Pointer_Is_Null          = -1,
-    Failed_To_Create_Logfile       = -2,
-    Destructed_Successfully        =  0,
-    Displayed_Successfully         =  0,
+    Stack_Pointer_Is_Null    = -1,
+    Failed_To_Create_Logfile = -2,
+    Logfile_Is_Not_Found     = -3,
+    Stack_Is_Destructed      = -4,
+    Mem_Pointer_Is_Null      = -5,
+    Mem_Size_Is_Zero         = -6,
 
+    Displayed_Successfully   =  1,
+    Destructed_Successfully  =  2,
+    Printed_Successfully     =  3
+};
+
+//----------------------------------------------------------------------------------------------------------------------
+
+enum Verification_Errors
+{
     Stack_Is_OK                    =  0,
     Size_Is_Over_Capacity          =  1 << 0,
     Pointer_To_TopElem_Is_Null     =  1 << 1,
@@ -49,10 +70,23 @@ enum Errors
 
 //----------------------------------------------------------------------------------------------------------------------
 
+static int stack_is_destructed(const Stack* stk)
+{
+    if (stk->status == INACTIVE)
+    {
+        printf("\nStack is destructed.\n");
+        return Stack_Is_Destructed;
+    }
+    else
+        return Stack_Is_OK;
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+
 static int stack_pointer_is_null(const Stack* stk)
 {
     if (stk == nullptr) {
-        printf("Pointer to stack is null\n");
+        printf("\nPointer to stack is null.\n");
         return Stack_Pointer_Is_Null;
     }
     else
@@ -63,6 +97,11 @@ static int stack_pointer_is_null(const Stack* stk)
 
 static unsigned int hash_FAQ6(const void* mem_pointer, size_t mem_size)
 {
+    if (mem_pointer == nullptr)
+        return Mem_Pointer_Is_Null;
+    if (mem_size == 0)
+        return Mem_Size_Is_Zero;
+
     unsigned int hash = 0;
     char* ptr = (char*) mem_pointer;
     for (size_t i = 0; i < mem_size; i++)
@@ -80,7 +119,7 @@ static unsigned int hash_FAQ6(const void* mem_pointer, size_t mem_size)
 
 //----------------------------------------------------------------------------------------------------------------------
 
-static void print_buffer_to_logfile(Stack* stk)
+static void print_buffer_to_logfile(const Stack* stk)
 {
     for (size_t i = 0; i < stk->capacity; i++)
     {
@@ -93,16 +132,22 @@ static void print_buffer_to_logfile(Stack* stk)
             fprintf (stk->logfile, "[%lg] ", stk->first_elem[i]);
         }
     }
+
+    fprintf(stk->logfile, "\n\nsize = %zu",       stk->size);
+    fprintf(stk->logfile,   "\ncapacity = %zu\n", stk->capacity);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 
-static void print_to_logfile(Stack* stk)
+static int print_stack_to_logfile(Stack* stk)
 {
-    print_buffer_to_logfile(stk);
+    if (stk->logfile == nullptr)
+    {
+        printf("\nLogfile is not found.\n");
+        return Logfile_Is_Not_Found;
+    }
 
-    fprintf(stk->logfile, "\nsize = %zu",       stk->size);
-    fprintf(stk->logfile, "\ncapacity = %zu\n", stk->capacity);
+    print_buffer_to_logfile(stk);
 
     if (stk->err & (Size_Is_Over_Capacity)) {
         fprintf(stk->logfile, "ERROR: Buffer size is over capacity\n");
@@ -143,12 +188,20 @@ static void print_to_logfile(Stack* stk)
     if (stk->err & (Failed_To_Create_Stack_Buffer)) {
         fprintf(stk->logfile, "ERROR: Failed to create stack buffer\n");
     }
+    fprintf(stk->logfile, "-------------------------------------------\n\n");
+
+    return Printed_Successfully;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 
 static int stack_verificator(Stack* stk)
 {
+    if (stack_pointer_is_null(stk))
+        return Stack_Pointer_Is_Null;
+    if (stack_is_destructed(stk))
+        return Stack_Is_Destructed;
+
     if (stk->size > stk->capacity)
     {
         stk->err |= Size_Is_Over_Capacity;
@@ -209,7 +262,7 @@ static int stack_verificator(Stack* stk)
 
     if (stk->err != 0)
     {
-        print_to_logfile(stk);
+        print_stack_to_logfile(stk);
     }
 
     int result = stk->err;
@@ -296,25 +349,28 @@ static void set_struct_canaries(Stack* stk)
 int stackCtor(Stack* stk, size_t init_capacity)
 {
    if (stack_pointer_is_null(stk))
-       return stack_pointer_is_null(stk);
+       return Stack_Pointer_Is_Null;
 
    FILE* logfile = fopen("stack_logfile.txt", "w");
-   if (logfile == nullptr) {
-       printf("Failed to create a logfile\n");
+   if (logfile == nullptr)
+   {
+       printf("\nFailed to create a logfile.\n");
        fclose(logfile);
        return Failed_To_Create_Logfile;
    }
    stk->logfile = logfile;
 
-   if (init_capacity > BUFFER_SIZE_MAX) {
-       fprintf(stk->logfile, "Too big size to create a stack\n");
+   if (init_capacity > BUFFER_SIZE_MAX)
+   {
+       fprintf(stk->logfile, "\nToo big size to create a stack.\n");
        fclose(logfile);
        return Failed_To_Create_Stack_Buffer;
    }
 
    stk->left_buff_canary = (canary_t*)calloc (SIZE_OF_INIT_BUFF, sizeof(char));
-   if (stk->left_buff_canary == nullptr) {
-       fprintf(stk->logfile, "Failed to create stack buffer\n");
+   if (stk->left_buff_canary == nullptr)
+   {
+       fprintf(stk->logfile, "\nFailed to create stack buffer.\n");
        fclose(logfile);
        return Failed_To_Create_Stack_Buffer;
    }
@@ -324,7 +380,7 @@ int stackCtor(Stack* stk, size_t init_capacity)
    stk->err      = 0;
    stk->capacity = init_capacity;
 
-   stk->first_elem = (elem_t*)(stk->left_buff_canary);
+   stk->first_elem = (elem_t*)(stk->left_buff_canary + 1);
    stk->top_elem   = stk->first_elem;
 
    put_poison_to_buffer(stk);
@@ -350,7 +406,7 @@ static int stack_resize(Stack* stk, Resize_mode mode)
         new_buff_size = SIZE_OF_EXPANDED_BUFF;
         stk->capacity *= MULTIPLIER;
     }
-    else
+    else // if (mode == SHRINK)
     {
         new_buff_size = SIZE_OF_SHRANK_BUFF;
         stk->capacity /= MULTIPLIER;
@@ -359,7 +415,7 @@ static int stack_resize(Stack* stk, Resize_mode mode)
     canary_t* ptr_to_new_buffer = (canary_t*) realloc(stk->left_buff_canary, new_buff_size);
     if (ptr_to_new_buffer == nullptr)
     {
-        stk->capacity = old_capacity; // to get correct structure hash when verification
+        stk->capacity = old_capacity;   // to get correct structure hash when verification
         return Failed_To_Resize_Stack;
     }
 
@@ -380,11 +436,13 @@ static int stack_resize(Stack* stk, Resize_mode mode)
 int stackPush(Stack* stk, elem_t value)
 {
     if (stack_pointer_is_null(stk))
-        return stack_pointer_is_null(stk);
+        return Stack_Pointer_Is_Null;
+    if (stack_is_destructed(stk))
+        return Stack_Is_Destructed;
 
-    int error = stack_verificator(stk);
-    if (error != Stack_Is_OK)
-        return error;
+    int errors = stack_verificator(stk);
+    if (errors != Stack_Is_OK)
+        return errors;
 
     if (stk->capacity == stk->size)
     {
@@ -401,7 +459,7 @@ int stackPush(Stack* stk, elem_t value)
         (stk->top_elem)++;
     }
     *(stk->top_elem) = value;
-    
+    stk->size++;
 
     recalculate_buffer_hash(stk);
     recalculate_struct_hash(stk);
@@ -414,11 +472,13 @@ int stackPush(Stack* stk, elem_t value)
 int stackPop(Stack* stk)
 {
     if (stack_pointer_is_null(stk))
-        return stack_pointer_is_null(stk);
+        return Stack_Pointer_Is_Null;
+    if (stack_is_destructed(stk))
+        return Stack_Is_Destructed;
 
-    int error = stack_verificator(stk);
-    if (error != Stack_Is_OK)
-        return error;
+    int errors = stack_verificator(stk);
+    if (errors != Stack_Is_OK)
+        return errors;
 
     if (stk->size >= 1)
     {
@@ -459,7 +519,9 @@ int stackPop(Stack* stk)
 int stackTop(Stack* stk, elem_t* value)
 {
     if (stack_pointer_is_null(stk))
-        return stack_pointer_is_null(stk);
+        return Stack_Pointer_Is_Null;
+    if (stack_is_destructed(stk))
+        return Stack_Is_Destructed;
 
     int err = stack_verificator(stk);
     if (err != 0)
@@ -482,7 +544,9 @@ int stackTop(Stack* stk, elem_t* value)
 int stackDtor(Stack* stk)
 {
     if (stack_pointer_is_null(stk))
-        return stack_pointer_is_null(stk);
+        return Stack_Pointer_Is_Null;
+    if (stack_is_destructed(stk))
+        return Stack_Is_Destructed;
 
     int err = stack_verificator(stk);
     if (err != 0)
@@ -504,7 +568,9 @@ int stackDtor(Stack* stk)
 int stackDisplay(const Stack* stk)
 {
     if (stack_pointer_is_null(stk))
-        return stack_pointer_is_null(stk);
+        return Stack_Pointer_Is_Null;
+    if (stack_is_destructed(stk))
+        return Stack_Is_Destructed;
 
     for (size_t i = 0; i < stk->capacity; i++)
     {
@@ -515,8 +581,10 @@ int stackDisplay(const Stack* stk)
     }
     printf("\nsize = %zu",      stk->size);
     printf("\ncapacity = %zu",  stk->capacity);
-    printf("\nbuffer hash: %u", stk->buffer_hash);
-    printf("\nstruct hash: %u", stk->struct_hash);
+
+//    printf("\nbuffer hash: %u", stk->buffer_hash);
+//    printf("\nstruct hash: %u", stk->struct_hash);
+
     printf("\n---------------------------------------\n");
 
     return Displayed_Successfully;
