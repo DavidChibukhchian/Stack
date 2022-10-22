@@ -26,7 +26,7 @@ static const size_t SIZE_OF_STRUCT =  1 * sizeof(stack_status)
 
 //----------------------------------------------------------------------------------------------------------------------
 
-enum Resize_Mode
+enum Resize_mode
 {
     EXPAND,
     SHRINK
@@ -42,10 +42,9 @@ enum Errors
     Stack_Is_Destructed      = -4,
     Mem_Pointer_Is_Null      = -5,
     Mem_Size_Is_Zero         = -6,
+    Stack_Is_Empty           = -7,
 
-    Displayed_Successfully   =  1,
-    Destructed_Successfully  =  2,
-    Printed_Successfully     =  3
+    Done_Successfully        =  1,
 };
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -63,10 +62,22 @@ enum Verification_Errors
     Right_Struct_Canary_Is_Damaged =  1 << 7,
     Incorrect_Buff_Hash            =  1 << 8,
     Incorrect_Struct_Hash          =  1 << 9,
-    Stack_Is_Empty                 =  1 << 10,
-    Failed_To_Resize_Stack         =  1 << 11,
-    Failed_To_Create_Stack_Buffer  =  1 << 12
+    Failed_To_Resize_Stack         =  1 << 10,
+    Failed_To_Create_Stack_Buffer  =  1 << 11
 };
+
+//----------------------------------------------------------------------------------------------------------------------
+
+static int stack_is_empty(const Stack* stk)
+{
+    if (stk->size == 0)
+    {
+        printf("\nStack is empty.\n");
+        return Stack_Is_Empty;
+    }
+    else
+        return Stack_Is_OK;
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -141,7 +152,7 @@ static void print_buffer_to_logfile(const Stack* stk)
 
 //----------------------------------------------------------------------------------------------------------------------
 
-static int print_stack_to_logfile(Stack* stk)
+static int print_stack_to_logfile(const Stack* stk)
 {
     if (stk->logfile == nullptr)
     {
@@ -181,9 +192,6 @@ static int print_stack_to_logfile(Stack* stk)
     if (stk->errors & (Incorrect_Struct_Hash)) {
         fprintf(stk->logfile, "ERROR: Incorrect structure hash\n");
     }
-    if (stk->errors & (Stack_Is_Empty)) {
-        fprintf(stk->logfile, "ERROR: Stack is empty\n");
-    }
     if (stk->errors & (Failed_To_Resize_Stack)) {
         fprintf(stk->logfile, "ERROR: Failed to resize stack\n");
     }
@@ -193,7 +201,7 @@ static int print_stack_to_logfile(Stack* stk)
 
     fprintf(stk->logfile, "-------------------------------------------\n\n");
 
-    return Printed_Successfully;
+    return Done_Successfully;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -438,11 +446,6 @@ static int stack_resize(Stack* stk, Resize_mode mode)
 
 int stackPush(Stack* stk, elem_t value)
 {
-    if (stack_pointer_is_null(stk))
-        return Stack_Pointer_Is_Null;
-    if (stack_is_destructed(stk))
-        return Stack_Is_Destructed;
-
     int errors = stack_verificator(stk);
     if (errors != Stack_Is_OK)
         return errors;
@@ -474,33 +477,25 @@ int stackPush(Stack* stk, elem_t value)
 
 int stackPop(Stack* stk, elem_t* top)
 {
-    if (stack_pointer_is_null(stk))
-        return Stack_Pointer_Is_Null;
-    if (stack_is_destructed(stk))
-        return Stack_Is_Destructed;
-
     int errors = stack_verificator(stk);
     if (errors != Stack_Is_OK)
         return errors;
 
-    if (stk->size >= 1)
+    if (stack_is_empty(stk))
+        return Stack_Is_Empty;
+
+    if (top != nullptr)
     {
-        if (top != nullptr)
-        {
-            *top = *stk->top_elem;
-        }
-        *(stk->top_elem) = POISON;
-        if (stk->size != 1)
-        {
-            (stk->top_elem)--;
-        }
-        (stk->size)--;
+        *top = *stk->top_elem;
     }
-    else
+    *(stk->top_elem) = POISON;
+
+    if (stk->size != 1)
     {
-        stk->errors |= Stack_Is_Empty;
-        return stack_verificator(stk);
+        (stk->top_elem)--;
     }
+
+    (stk->size)--;
 
     recalculate_buffer_hash(stk);
     recalculate_struct_hash(stk);
@@ -525,36 +520,22 @@ int stackPop(Stack* stk, elem_t* top)
 
 int stackTop(Stack* stk, elem_t* top)
 {
-    if (stack_pointer_is_null(stk))
-        return Stack_Pointer_Is_Null;
-    if (stack_is_destructed(stk))
-        return Stack_Is_Destructed;
-
     int errors = stack_verificator(stk);
     if (errors != Stack_Is_OK)
         return errors;
 
-    if (stk->size != 0)
-    {
-        *top = *stk->top_elem;
-    }
-    else
-    {
-        stk->errors |= Stack_Is_Empty;
-    }
+    if (stack_is_empty(stk))
+        return Stack_Is_Empty;
 
-    return stack_verificator(stk);
+    *top = *stk->top_elem;
+
+    return Done_Successfully;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 
 int stackDtor(Stack* stk)
 {
-    if (stack_pointer_is_null(stk))
-        return Stack_Pointer_Is_Null;
-    if (stack_is_destructed(stk))
-        return Stack_Is_Destructed;
-
     int errors = stack_verificator(stk);
     if (errors != Stack_Is_OK)
         return errors;
@@ -567,17 +548,16 @@ int stackDtor(Stack* stk)
     fclose(stk->logfile);
     free(stk->left_buff_canary);
 
-    return Destructed_Successfully;
+    return Done_Successfully;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 
-int stackDisplay(const Stack* stk)
+int stackDisplay(Stack* stk)
 {
-    if (stack_pointer_is_null(stk))
-        return Stack_Pointer_Is_Null;
-    if (stack_is_destructed(stk))
-        return Stack_Is_Destructed;
+    int errors = stack_verificator(stk);
+    if (errors != Stack_Is_OK)
+        return errors;
 
     for (size_t i = 0; i < stk->capacity; i++)
     {
@@ -594,7 +574,7 @@ int stackDisplay(const Stack* stk)
 
     printf("\n---------------------------------------\n");
 
-    return Displayed_Successfully;
+    return Done_Successfully;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
