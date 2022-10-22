@@ -85,7 +85,8 @@ static int stack_is_destructed(const Stack* stk)
 
 static int stack_pointer_is_null(const Stack* stk)
 {
-    if (stk == nullptr) {
+    if (stk == nullptr)
+    {
         printf("\nPointer to stack is null.\n");
         return Stack_Pointer_Is_Null;
     }
@@ -104,6 +105,7 @@ static unsigned int hash_FAQ6(const void* mem_pointer, size_t mem_size)
 
     unsigned int hash = 0;
     char* ptr = (char*) mem_pointer;
+
     for (size_t i = 0; i < mem_size; i++)
     {
         hash += (unsigned char) ptr[i];
@@ -149,45 +151,46 @@ static int print_stack_to_logfile(Stack* stk)
 
     print_buffer_to_logfile(stk);
 
-    if (stk->err & (Size_Is_Over_Capacity)) {
+    if (stk->errors & (Size_Is_Over_Capacity)) {
         fprintf(stk->logfile, "ERROR: Buffer size is over capacity\n");
     }
-    if (stk->err & (Pointer_To_TopElem_Is_Null)) {
+    if (stk->errors & (Pointer_To_TopElem_Is_Null)) {
         fprintf(stk->logfile, "ERROR: Pointer to top element is null\n");
     }
-    if (stk->err & (Incorrect_Pointer_To_TopElem)) {
+    if (stk->errors & (Incorrect_Pointer_To_TopElem)) {
         fprintf(stk->logfile, "ERROR: Incorrect pointer to top element\n");
     }
-    if (stk->err & (Stack_Is_Overflow)) {
+    if (stk->errors & (Stack_Is_Overflow)) {
         fprintf(stk->logfile, "ERROR: Stack is overflow\n");
     }
-    if (stk->err & (Left_Buff_Canary_Is_Damaged)) {
+    if (stk->errors & (Left_Buff_Canary_Is_Damaged)) {
         fprintf(stk->logfile, "ERROR: Left buffer canary is damaged\n");
     }
-    if (stk->err & (Right_Buff_Canary_Is_Damaged)) {
+    if (stk->errors & (Right_Buff_Canary_Is_Damaged)) {
         fprintf(stk->logfile, "ERROR: Right buffer canary is damaged\n");
     }
-    if (stk->err & (Left_Struct_Canary_Is_Damaged)) {
+    if (stk->errors & (Left_Struct_Canary_Is_Damaged)) {
         fprintf(stk->logfile, "ERROR: Left structure canary is damaged\n");
     }
-    if (stk->err & (Right_Struct_Canary_Is_Damaged)) {
+    if (stk->errors & (Right_Struct_Canary_Is_Damaged)) {
         fprintf(stk->logfile, "ERROR: Right structure canary is damaged\n");
     }
-    if (stk->err & (Incorrect_Buff_Hash)) {
+    if (stk->errors & (Incorrect_Buff_Hash)) {
         fprintf(stk->logfile, "ERROR: Incorrect buffer hash\n");
     }
-    if (stk->err & (Incorrect_Struct_Hash)) {
+    if (stk->errors & (Incorrect_Struct_Hash)) {
         fprintf(stk->logfile, "ERROR: Incorrect structure hash\n");
     }
-    if (stk->err & (Stack_Is_Empty)) {
+    if (stk->errors & (Stack_Is_Empty)) {
         fprintf(stk->logfile, "ERROR: Stack is empty\n");
     }
-    if (stk->err & (Failed_To_Resize_Stack)) {
+    if (stk->errors & (Failed_To_Resize_Stack)) {
         fprintf(stk->logfile, "ERROR: Failed to resize stack\n");
     }
-    if (stk->err & (Failed_To_Create_Stack_Buffer)) {
+    if (stk->errors & (Failed_To_Create_Stack_Buffer)) {
         fprintf(stk->logfile, "ERROR: Failed to create stack buffer\n");
     }
+
     fprintf(stk->logfile, "-------------------------------------------\n\n");
 
     return Printed_Successfully;
@@ -204,48 +207,48 @@ static int stack_verificator(Stack* stk)
 
     if (stk->size > stk->capacity)
     {
-        stk->err |= Size_Is_Over_Capacity;
+        stk->errors |= Size_Is_Over_Capacity;
     }
     if (stk->top_elem == nullptr)
     {
-        stk->err |= Pointer_To_TopElem_Is_Null;
+        stk->errors |= Pointer_To_TopElem_Is_Null;
     }
 
     if (stk->size == 0)
     {
         if (stk->top_elem != stk->first_elem)
         {
-            stk->err |= Incorrect_Pointer_To_TopElem;
+            stk->errors |= Incorrect_Pointer_To_TopElem;
         }
     }
     else
     {
         if (stk->top_elem != (stk->first_elem + stk->size - 1))
         {
-            stk->err |= Incorrect_Pointer_To_TopElem;
+            stk->errors |= Incorrect_Pointer_To_TopElem;
         }
     }
 
     if (stk->capacity > BUFFER_SIZE_MAX)
     {
-        stk->err |= Stack_Is_Overflow;
+        stk->errors |= Stack_Is_Overflow;
     }
 
     if (*stk->left_buff_canary != CANARY)
     {
-        stk->err |= Left_Buff_Canary_Is_Damaged;
+        stk->errors |= Left_Buff_Canary_Is_Damaged;
     }
     if (*stk->right_buff_canary != CANARY)
     {
-        stk->err |= Right_Buff_Canary_Is_Damaged;
+        stk->errors |= Right_Buff_Canary_Is_Damaged;
     }
     if (stk->left_struct_canary != CANARY)
     {
-        stk->err |= Left_Struct_Canary_Is_Damaged;
+        stk->errors |= Left_Struct_Canary_Is_Damaged;
     }
     if (stk->right_struct_canary != CANARY)
     {
-        stk->err |= Right_Struct_Canary_Is_Damaged;
+        stk->errors |= Right_Struct_Canary_Is_Damaged;
     }
 
     unsigned int recalculated_buffer_hash = hash_FAQ6(stk->left_buff_canary, SIZE_OF_BUFF);
@@ -253,20 +256,20 @@ static int stack_verificator(Stack* stk)
 
     if (recalculated_buffer_hash != stk->buffer_hash)
     {
-        stk->err |= Incorrect_Buff_Hash;
+        stk->errors |= Incorrect_Buff_Hash;
     }
     if (recalculated_struct_hash != stk->struct_hash)
     {
-        stk->err |= Incorrect_Struct_Hash;
+        stk->errors |= Incorrect_Struct_Hash;
     }
 
-    if (stk->err != 0)
+    if (stk->errors != 0)
     {
         print_stack_to_logfile(stk);
     }
 
-    int result = stk->err;
-    stk->err = 0;
+    int result = stk->errors;
+    stk->errors = 0;
     return result;
 }
 
@@ -377,7 +380,7 @@ int stackCtor(Stack* stk, size_t init_capacity)
 
    stk->status   = ACTIVE;
    stk->size     = 0;
-   stk->err      = 0;
+   stk->errors   = 0;
    stk->capacity = init_capacity;
 
    stk->first_elem = (elem_t*)(stk->left_buff_canary + 1);
@@ -399,7 +402,7 @@ int stackCtor(Stack* stk, size_t init_capacity)
 static int stack_resize(Stack* stk, Resize_mode mode)
 {
     size_t new_buff_size = 0;
-    size_t old_capacity  = stk->capacity;
+    size_t old_capacity  = stk->capacity; // to get correct structure hash when verification
 
     if (mode == EXPAND)
     {
@@ -412,7 +415,7 @@ static int stack_resize(Stack* stk, Resize_mode mode)
         stk->capacity /= MULTIPLIER;
     }
 
-    canary_t* ptr_to_new_buffer = (canary_t*) realloc(stk->left_buff_canary, new_buff_size);
+    canary_t* ptr_to_new_buffer = (canary_t*)realloc (stk->left_buff_canary, new_buff_size);
     if (ptr_to_new_buffer == nullptr)
     {
         stk->capacity = old_capacity;   // to get correct structure hash when verification
@@ -449,7 +452,7 @@ int stackPush(Stack* stk, elem_t value)
         int res = stack_resize(stk, EXPAND);
         if (res == Failed_To_Resize_Stack)
         {
-            stk->err |= Failed_To_Resize_Stack;
+            stk->errors |= Failed_To_Resize_Stack;
             return stack_verificator(stk);
         }
     }
@@ -469,7 +472,7 @@ int stackPush(Stack* stk, elem_t value)
 
 //----------------------------------------------------------------------------------------------------------------------
 
-int stackPop(Stack* stk)
+int stackPop(Stack* stk, elem_t* top)
 {
     if (stack_pointer_is_null(stk))
         return Stack_Pointer_Is_Null;
@@ -482,6 +485,10 @@ int stackPop(Stack* stk)
 
     if (stk->size >= 1)
     {
+        if (top != nullptr)
+        {
+            *top = *stk->top_elem;
+        }
         *(stk->top_elem) = POISON;
         if (stk->size != 1)
         {
@@ -491,7 +498,7 @@ int stackPop(Stack* stk)
     }
     else
     {
-        stk->err |= Stack_Is_Empty;
+        stk->errors |= Stack_Is_Empty;
         return stack_verificator(stk);
     }
 
@@ -503,7 +510,7 @@ int stackPop(Stack* stk)
         int res = stack_resize(stk, SHRINK);
         if (res == Failed_To_Resize_Stack)
         {
-            stk->err |= Failed_To_Resize_Stack;
+            stk->errors |= Failed_To_Resize_Stack;
             return stack_verificator(stk);
         }
     }
@@ -523,9 +530,9 @@ int stackTop(Stack* stk, elem_t* top)
     if (stack_is_destructed(stk))
         return Stack_Is_Destructed;
 
-    int err = stack_verificator(stk);
-    if (err != 0)
-        return err;
+    int errors = stack_verificator(stk);
+    if (errors != Stack_Is_OK)
+        return errors;
 
     if (stk->size != 0)
     {
@@ -533,7 +540,7 @@ int stackTop(Stack* stk, elem_t* top)
     }
     else
     {
-        stk->err |= Stack_Is_Empty;
+        stk->errors |= Stack_Is_Empty;
     }
 
     return stack_verificator(stk);
@@ -548,9 +555,9 @@ int stackDtor(Stack* stk)
     if (stack_is_destructed(stk))
         return Stack_Is_Destructed;
 
-    int err = stack_verificator(stk);
-    if (err != 0)
-        return err;
+    int errors = stack_verificator(stk);
+    if (errors != Stack_Is_OK)
+        return errors;
 
     stk->status = INACTIVE;
 
