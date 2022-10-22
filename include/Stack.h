@@ -43,6 +43,6 @@ int stackTop  (Stack* stk, elem_t* top);
 
 int stackDtor (Stack* stk);
 
-int stackDisplay (const Stack* stk);
+int stackDisplay (Stack* stk);
 
 #endif //TASK3_STACK_H
