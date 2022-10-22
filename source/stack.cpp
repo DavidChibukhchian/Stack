@@ -26,7 +26,7 @@ static const size_t SIZE_OF_STRUCT =  1 * sizeof(stack_status)
 
 //----------------------------------------------------------------------------------------------------------------------
 
-enum Resize_mode
+enum Resize_Mode
 {
     EXPAND,
     SHRINK
