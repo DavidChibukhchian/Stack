@@ -26,7 +26,7 @@ static const size_t SIZE_OF_STRUCT =  1 * sizeof(stack_status)
 
 //----------------------------------------------------------------------------------------------------------------------
 
-enum Resize_mode
+enum Resize_Mode
 {
     EXPAND,
     SHRINK
@@ -407,7 +407,7 @@ int stackCtor(Stack* stk, size_t init_capacity)
 
 //----------------------------------------------------------------------------------------------------------------------
 
-static int stack_resize(Stack* stk, Resize_mode mode)
+static int stack_resize(Stack* stk, Resize_Mode mode)
 {
     size_t new_buff_size = 0;
     size_t old_capacity  = stk->capacity; // to get correct structure hash when verification
