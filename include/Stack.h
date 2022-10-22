@@ -26,7 +26,7 @@ struct Stack
     canary_t* left_buff_canary;
     canary_t* right_buff_canary;
 
-    int err;
+    int errors;
     unsigned int buffer_hash;
     unsigned int struct_hash;
 
@@ -37,7 +37,7 @@ int stackCtor (Stack* stk, size_t init_capacity = 1);
 
 int stackPush (Stack* stk, elem_t value);
 
-int stackPop  (Stack* stk);
+int stackPop  (Stack* stk, elem_t* top = nullptr);
 
 int stackTop  (Stack* stk, elem_t* top);
 
